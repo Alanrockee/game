@@ -40,6 +40,8 @@
 2. **Tailscale**（免费个人版即可），电脑和手机都安装并登录**同一个账号**。在 [管理后台 → DNS](https://login.tailscale.com/admin/dns) 打开 **MagicDNS** 和 **HTTPS Certificates**。
 3. 电脑保持**开机、联网、不睡眠**（见下文“让电脑保持在线”）。
 
+> **macOS 提示**：Tailscale 的 App Store 版和“系统扩展”版出于沙盒限制，不能用 `tailscale serve` 直接提供本地目录（Tailscale 源码中的明确限制），因此 `/pwa/` 的 manifest 和图标无法提供。脚本会提示，插件也会自动跳过 manifest：网页照常可用，iPhone 仍可从主屏幕以独立窗口打开（依靠插件注入的 iOS 元信息），Android 只能创建普通快捷方式。需要完整 PWA 时，可改用 Tailscale 的开源 `tailscaled` 版本（见 Tailscale 文档“macOS variants”）。
+
 > 不想用 Tailscale？任何你自己运行在**同一台机器**上的 HTTPS 反向代理/隧道都可以（`--public-url`）。但用户名/密码登录官方只建议用于可信网络或 VPN；如果要暴露到公网，请改用 Hermes 官方的 Nous 账号登录或自建 OIDC（见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#公网暴露)）。**不要**用 Tailscale Funnel 把它公开到互联网。
 
 ## 安装（在 Hermes 主机上执行）

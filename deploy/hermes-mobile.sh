@@ -26,7 +26,7 @@ case "${1:-status}" in
     if [ -n "$url" ] && command -v curl >/dev/null; then
       echo "== 入口自检：$url"
       printf '  未登录读取会话 → %s（期望 401）\n' "$(curl -s -o /dev/null -w '%{http_code}' "$url/api/sessions" || echo 失败)"
-      printf '  PWA manifest   → %s（期望 200）\n' "$(curl -s -o /dev/null -w '%{http_code}' "$url/pwa/manifest.webmanifest" || echo 失败)"
+      printf '  PWA manifest   → %s（期望 200）\n' "$(curl -s -o /dev/null -w '%{http_code}' "$url/pwa/manifest.json" || echo 失败)"
     fi ;;
   start)   "$HERMES_BIN" gateway start ;;
   stop)    echo "停止后手机将无法访问，正在运行的任务也会中断。"; "$HERMES_BIN" gateway stop ;;

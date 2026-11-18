@@ -1,12 +1,12 @@
 // Hermes Desktop 插件：mobile-pwa
 // 作用：只在“浏览器里的 Webapp”中生效，补齐官方 Webapp 缺少的移动端安装与安全区适配。
-//   1. <link rel="manifest">，指向由 HTTPS 入口（Tailscale Serve）在 /pwa/ 下提供的静态清单
+//   1. <link rel="manifest">，指向由 HTTPS 入口（Tailscale Serve）在 /pwa/ 下提供的静态清单（入口没提供时自动跳过）
 //   2. iOS / Android 的“添加到主屏幕”元信息与不透明背景图标
 //   3. viewport-fit=cover + env(safe-area-inset-*) 内边距，避免底部手势条 / 刘海遮挡输入框
 //      （软键盘弹出、焦点在输入区时去掉底部内边距，避免键盘上方留白）
 //   4. 退出登录成功后清除本机 localStorage/sessionStorage 中的草稿、待确认提交、队列等私密状态
 //      （只保留主题/布局等纯界面偏好）
-// 不修改 Hermes 源码，不发起任何额外网络请求，不读取会话内容；禁用插件即恢复原状。
+// 不修改 Hermes 源码，不读取会话内容；唯一的网络请求是对 /pwa/manifest.json 的一次无凭证 HEAD；禁用插件即恢复原状。
 // 安装位置：~/.hermes/desktop-plugins/mobile-pwa/plugin.js（目录名必须等于 id）
 
 // 退出登录时保留的“纯界面偏好”（白名单）；其余 localStorage / sessionStorage 一律清除，
@@ -28,7 +28,7 @@ function clearPrivateState() {
   try { window.sessionStorage.clear() } catch { /* storage unavailable */ }
 }
 
-const MANIFEST_HREF = '/pwa/manifest.webmanifest'
+const MANIFEST_HREF = '/pwa/manifest.json'
 const ICON_HREF = '/pwa/icon-180.png'
 const STYLE_ID = 'mobile-pwa-safe-area'
 
@@ -72,7 +72,6 @@ export default {
       return el
     }
 
-    if (!document.querySelector('link[rel="manifest"]')) addHead('link', { rel: 'manifest', href: MANIFEST_HREF })
     const metas = {
       'apple-mobile-web-app-capable': 'yes',
       'mobile-web-app-capable': 'yes',
@@ -83,12 +82,21 @@ export default {
       if (!document.querySelector(`meta[name="${name}"]`)) addHead('meta', { name, content })
     }
 
-    // 官方图标背景透明，iOS 主屏会把透明区域渲染成黑色；换成不透明版本，禁用时还原。
-    for (const link of document.querySelectorAll('link[rel="apple-touch-icon"]')) {
-      const prev = link.getAttribute('href')
-      link.setAttribute('href', ICON_HREF)
-      undo.push(() => link.setAttribute('href', prev))
-    }
+    // manifest 与不透明图标由 HTTPS 入口在 /pwa/ 下提供（不经过登录门）。先用一次不带凭证的 HEAD
+    // 确认文件存在：例如 macOS 上 Tailscale 不能直接提供本地目录时，就保留官方图标、不加 manifest，
+    // 页面照常使用（iOS 仍可凭上面的 meta 以独立窗口打开）。
+    let disposed = false
+    undo.push(() => { disposed = true })
+    fetch(MANIFEST_HREF, { method: 'HEAD', credentials: 'omit', cache: 'no-store' }).then(res => {
+      if (disposed || !res.ok) return
+      if (!document.querySelector('link[rel="manifest"]')) addHead('link', { rel: 'manifest', href: MANIFEST_HREF })
+      // 官方图标背景透明，iOS 主屏会把透明区域渲染成黑色；换成不透明版本，禁用时还原。
+      for (const link of document.querySelectorAll('link[rel="apple-touch-icon"]')) {
+        const prev = link.getAttribute('href')
+        link.setAttribute('href', ICON_HREF)
+        undo.push(() => link.setAttribute('href', prev))
+      }
+    }).catch(() => { /* 入口未提供 /pwa/，保持官方默认 */ })
 
     // 安全区：只在触控设备上开启 viewport-fit=cover，否则桌面浏览器保持原样。
     const coarse = window.matchMedia('(pointer: coarse)').matches

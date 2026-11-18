@@ -491,7 +491,7 @@ async function layoutMetrics(page) {
     const inst = await cdp.send('Page.getInstallabilityErrors')
     check('Chrome 认为可安装（无 installability 错误）', inst.installabilityErrors.length === 0, inst.installabilityErrors)
     const anon = await browser.newContext({ ignoreHTTPSErrors: CFG.insecureTls })
-    const m = await anon.request.get(`${CFG.base}/pwa/manifest.webmanifest`)
+    const m = await anon.request.get(`${CFG.base}/pwa/manifest.json`)
     check('manifest 不需要登录也可获取（浏览器拉取 manifest 不带 Cookie），且不含私有数据', m.status() === 200 && !/session|token|password/i.test(await m.text()), m.status())
     await anon.close()
     await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 34, left: 0, right: 0 } })

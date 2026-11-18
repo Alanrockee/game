@@ -173,7 +173,7 @@ if [ "$USE_TAILSCALE" = 1 ]; then
   say "配置 Tailscale Serve（仅 tailnet 内可访问，不是 Funnel 公网）"
   "$TS_BIN" serve --bg --https=443 "http://127.0.0.1:$PORT" >/dev/null && ok "https://$DNS_NAME/ → http://127.0.0.1:$PORT"
   if "$TS_BIN" serve --bg --https=443 --set-path /pwa "$HERMES_HOME/mobile-pwa" >/dev/null 2>&1; then ok "https://$DNS_NAME/pwa/ → $HERMES_HOME/mobile-pwa"
-  else warn "Tailscale 无法直接提供本地目录（例如 macOS App Store 版）。网页仍可用，只是“添加到主屏幕”不会以独立 App 打开。见 README 的替代方案。"; fi
+  else warn "Tailscale 无法直接提供本地目录（macOS 的 App Store 版/系统扩展版有此限制）。网页照常可用，插件会自动跳过 manifest；iPhone 仍可从主屏幕独立打开，Android 只能创建快捷方式。见 README 的 macOS 提示。"; fi
   if [ "$BLOCK_TERMINAL" = 1 ]; then
     if "$TS_BIN" serve --bg --https=443 --set-path /api/host-terminal 'text:disabled' >/dev/null 2>&1; then ok "已在入口屏蔽 /api/host-terminal（远程网页不能打开主机终端）"
     else warn "未能屏蔽 /api/host-terminal（该 Tailscale 版本不支持 text: 目标）"; fi
@@ -208,7 +208,7 @@ sleep 3
 if command -v curl >/dev/null; then
   code="$(curl -s -o /dev/null -w '%{http_code}' "$PUBLIC_URL/api/sessions" || true)"
   [ "$code" = 401 ] && ok "未登录访问 $PUBLIC_URL/api/sessions → 401（登录门生效）" || warn "未登录访问返回 $code（期望 401；若网关尚未重启属正常）"
-  code="$(curl -s -o /dev/null -w '%{http_code}' "$PUBLIC_URL/pwa/manifest.webmanifest" || true)"
+  code="$(curl -s -o /dev/null -w '%{http_code}' "$PUBLIC_URL/pwa/manifest.json" || true)"
   [ "$code" = 200 ] && ok "PWA manifest 可访问" || warn "PWA manifest 返回 $code"
 fi
 

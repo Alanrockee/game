@@ -37,7 +37,7 @@
 
 官方 Desktop 插件（ESM，`register(ctx)`），Webapp 从主机的 `~/.hermes/desktop-plugins/` 加载。只在 `data-hermes-desktop-host="browser"` 时生效：
 
-1. 注入 `<link rel="manifest" href="/pwa/manifest.webmanifest">` 与 iOS/Android 主屏幕元信息，把透明背景的官方图标换成不透明版本（iOS 会把透明区渲染成黑色）。官方 CSP 已允许 `manifest-src 'self'`。
+1. 注入 `<link rel="manifest" href="/pwa/manifest.json">` 与 iOS/Android 主屏幕元信息，把透明背景的官方图标换成不透明版本（iOS 会把透明区渲染成黑色）。官方 CSP 已允许 `manifest-src 'self'`。
 2. 触控设备上追加 `viewport-fit=cover`，用 `env(safe-area-inset-*)` 给 `#root` 留出安全区；输入框获得焦点（软键盘弹出）时去掉底部留白。
 3. 包装页面内 `fetch`：检测到 `POST /auth/logout` 成功后，用白名单只保留主题/布局等纯界面偏好，清除 localStorage/sessionStorage 中的草稿（`hermes:composer-drafts:*`）、待确认提交（`pendingSubmissions`）、队列、最近会话/路由、未读计数等；通过 `BroadcastChannel` 通知同设备其他标签页一起清除，并在页面卸载时再清一次，防止应用把内存中的草稿写回。
 
@@ -45,7 +45,7 @@
 
 ### 3.2 `/pwa/` 静态文件
 
-`manifest.webmanifest`（`display: standalone`、`start_url: /`、中文名）与 180/192/512/maskable 图标。浏览器拉取 manifest 不带 Cookie，所以它必须在登录门之外：由 Tailscale Serve 直接从 `~/.hermes/mobile-pwa/` 提供，不经过 Gateway，内容不含任何私密信息。
+`manifest.json`（`display: standalone`、`start_url: /`、中文名）与 180/192/512/maskable 图标。浏览器拉取 manifest 不带 Cookie，所以它必须在登录门之外：由 Tailscale Serve 直接从 `~/.hermes/mobile-pwa/` 提供，不经过 Gateway，内容不含任何私密信息。
 
 ### 3.3 远程入口：Tailscale Serve
 
