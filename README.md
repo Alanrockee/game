@@ -36,7 +36,7 @@
 
 ## 你需要准备
 
-1. **Hermes 主机**：已安装 Hermes Agent ≥ v0.23.2（Linux / macOS / WSL2；原生 Windows 见文末），模型和工具已经能在 CLI 里正常用。
+1. **Hermes 主机**：已安装 Hermes Agent ≥ v0.23.2（Linux / macOS / WSL2；原生 Windows 用 PowerShell 版脚本，见下文“Windows（原生）”），模型和工具已经能在 CLI 里正常用。
 2. **Tailscale**（免费个人版即可），电脑和手机都安装并登录**同一个账号**。在 [管理后台 → DNS](https://login.tailscale.com/admin/dns) 打开 **MagicDNS** 和 **HTTPS Certificates**。
 3. 电脑保持**开机、联网、不睡眠**（见下文“让电脑保持在线”）。
 
@@ -139,24 +139,23 @@ bash deploy/hermes-mobile.sh signout-all # 所有浏览器立即退出登录
 - 模型 API Key、服务凭证只在主机 `~/.hermes/.env`。浏览器只持有 HttpOnly 登录 Cookie；本仓库不含任何真实密钥。
 - 用户名/密码登录只适合 tailnet/VPN。要公网访问，请改用官方 Nous 账号登录或 OIDC。
 
-## 原生 Windows
+## Windows（原生）
 
-`setup-webapp.sh` 需要 bash（WSL2 可直接用）。原生 Windows 上手动执行等价步骤：
+在装了 Hermes 的 Windows 电脑上，用 PowerShell 版一键脚本（功能与 `setup-webapp.sh` 相同）：
 
-```powershell
-hermes config set webapp.enabled true
-hermes config set webapp.host 127.0.0.1
-hermes config set webapp.port 9120
-hermes config set webapp.public_url https://<电脑名>.<tailnet>.ts.net
-hermes config set display.language zh
-# 在 %LOCALAPPDATA%\hermes\.env 写入 HERMES_DASHBOARD_BASIC_AUTH_USERNAME / _PASSWORD_HASH / _SECRET（见 deploy/env.example）
-# 复制 deploy\desktop-plugin\mobile-pwa\plugin.js 到 <Hermes 主目录>\desktop-plugins\mobile-pwa\plugin.js
-# 复制 deploy\pwa\* 到 <Hermes 主目录>\mobile-pwa\
-tailscale serve --bg --https=443 http://127.0.0.1:9120
-tailscale serve --bg --https=443 --set-path /pwa <Hermes 主目录>\mobile-pwa
-hermes webapp --build-only
-hermes gateway restart
-```
+1. 下载本仓库：浏览器打开 GitHub 仓库，切换到分支 `claude/hermes-mobile-webapp-sync-oh2jsn`，点 **Code → Download ZIP**，解压到任意文件夹。或者执行 `git clone -b claude/hermes-mobile-webapp-sync-oh2jsn <仓库地址>`。
+2. 在解压出的文件夹空白处按住 Shift 点右键 → **在此处打开 PowerShell 窗口**（或“在终端中打开”）。
+3. 运行：
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\deploy\setup-webapp.ps1
+   ```
+   `-ExecutionPolicy Bypass` 只对这一次运行有效，不会修改系统设置。按提示设置登录密码即可。
+4. 如果提示 `tailscale serve` 失败，关掉窗口，右键开始菜单 → **终端（管理员）**，进入同一个文件夹后再运行一次。
+
+可选参数与 bash 版对应：`-User`、`-Port`、`-PublicUrl`、`-NoZh`、`-InstallService`、`-BlockTerminal`。日常管理直接用官方命令：`hermes gateway status | restart | stop | start`、`hermes logs gateway -f`、`hermes backup --quick`、`hermes webapp --sign-out`。回退：把 `%LOCALAPPDATA%\hermes\backups\mobile-webapp-<时间>\` 里的 `config.yaml`、`.env` 复制回 `%LOCALAPPDATA%\hermes\`，然后 `hermes gateway restart`。
+
+> Hermes 如果装在 **WSL2** 里，请在 WSL 终端运行 `bash deploy/setup-webapp.sh`；Tailscale 仍装在 Windows 上。
+> Windows 电脑保持在线：在“设置 → 系统 → 电源”里把“接通电源时进入睡眠”设为“从不”，或使用 Hermes Desktop 的 **Keep computer awake**。脚本不会修改电源设置。
 
 ## 测试
 

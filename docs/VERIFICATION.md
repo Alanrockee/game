@@ -67,7 +67,7 @@
 | 语音输入、任务完成通知 | **未接入额外实现，未验证** | 沿用官方 Webapp（需要 HTTPS 安全上下文）。不承诺后台通知 |
 | 多个独立 Hermes 实例 | **不在本方案范围** | 官方 Webapp 的“设置 → 网关”可以添加其他网关连接，各自独立，不合并数据库 |
 | 附件自动清理 | **官方未提供** | 附件保存在 `.hermes/attachments/`，需要手动清理 |
-| 原生 Windows 一键脚本 | **未提供** | README 给出了等价的手动命令 |
+| Windows PowerShell 版脚本 `setup-webapp.ps1` | **未在 Windows 上实际运行** | 开发环境没有 Windows/PowerShell。已逐行审查 PowerShell 5.1 的兼容问题（UTF-8 BOM 编码、智能引号、外部程序参数里的双引号、stderr 与 ErrorAction），并验证其中的密码哈希代码生成的哈希能通过 Hermes 官方校验（含中文密码）。首次运行如有报错，把输出发回即可修正 |
 
 ## 最短人工验证步骤
 
