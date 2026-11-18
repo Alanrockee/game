@@ -1,0 +1,23 @@
+# 合并到 ~/.hermes/config.yaml（推荐用 setup-webapp.sh 或 `hermes config set` 写入，不要手工覆盖整个文件）
+# 下面只列出本方案涉及的键；其余保持你原有配置不变。
+
+webapp:
+  enabled: true                       # 由网关提供官方 Webapp
+  host: 127.0.0.1                     # 只监听本机，外部经 Tailscale Serve 的 HTTPS 访问
+  port: 9120
+  public_url: https://YOUR-MACHINE.YOUR-TAILNET.ts.net   # Tailscale Serve 给出的地址；设置后强制登录
+
+display:
+  language: zh                        # Desktop / Webapp 界面使用简体中文（可选）
+
+dashboard:
+  # 仅当 HTTPS 入口（反向代理/隧道）运行在“另一台机器或容器”里时才需要；
+  # Tailscale Serve 在本机，走 loopback，已被默认信任，留空即可。
+  trusted_proxies: []
+  # 慢网络（手机流量、Tailscale 中继）下如果频繁出现 1006 断线，可适当调大：
+  # ws_ping_interval: 30.0
+  # ws_ping_timeout: 30.0
+  # 客户端全部断开后，仍在产出的任务继续运行；只有超过该秒数毫无活动才视为卡死并中断（官方默认 600）
+  # ws_orphan_activity_stale_s: 600.0
+
+# approvals: 保持你原有的设置（默认 smart）。本方案不修改工具批准规则。

@@ -1,0 +1,14 @@
+{
+  "name": "hermes-mobile-webapp-e2e",
+  "private": true,
+  "description": "Hermes 移动端 Webapp 验收测试（驱动真实 Hermes Webapp）",
+  "scripts": {
+    "test": "node run.cjs"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -212,9 +212,10 @@ if command -v curl >/dev/null; then
   [ "$code" = 200 ] && ok "PWA manifest 可访问" || warn "PWA manifest 返回 $code"
 fi
 
+if [ "$USE_TAILSCALE" = 1 ]; then REACH="需手机安装 Tailscale 并登录同一个 tailnet"; else REACH="需手机能访问你提供的 HTTPS 入口"; fi
 cat <<EOF
 
-完成。手机访问地址（需手机已登录同一个 Tailscale 账号/tailnet）：
+完成。手机访问地址（$REACH）：
 
     $PUBLIC_URL
 

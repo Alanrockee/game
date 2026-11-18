@@ -35,7 +35,7 @@ async function scenario(id, title, opts, fn) {
   if (CFG.only.length && !CFG.only.includes(id)) return
   const rec = { id, title, kind: KIND, status: 'pass', checks: [], notes: [] }
   const t0 = Date.now()
-  const skip = (opts.needsStub && !STUB) ? '需要模型桩（HERMES_E2E_STUB_LOG）' : (opts.needsLocal && !LOCAL) ? '需要在 Hermes 主机本机运行（HERMES_E2E_LOCAL=1）' : ''
+  const skip = (opts.needsReal && STUB) ? '仅在接真实模型时运行' : (opts.needsStub && !STUB) ? '需要模型桩（HERMES_E2E_STUB_LOG）' : (opts.needsLocal && !LOCAL) ? '需要在 Hermes 主机本机运行（HERMES_E2E_LOCAL=1）' : ''
   if (skip) { rec.status = 'skip'; rec.notes.push(skip) } else {
     const check = (name, ok, detail) => { rec.checks.push({ name, ok: Boolean(ok), detail }); if (!ok) rec.status = 'fail'; return Boolean(ok) }
     const note = s => rec.notes.push(s)
@@ -453,6 +453,32 @@ async function layoutMetrics(page) {
     check('图片上传成功', imgRes.status() === 200, { url: imgRes.url().replace(CFG.base, ''), status: imgRes.status() })
     await B.page.screenshot({ path: path.join(SHOTS, 'S10-files.png') })
     await A.ctx.close(); await B.ctx.close()
+  })
+
+  // ------------------------------------------------------------------ R01/R02（真实模型冒烟，可在你自己的主机上运行）
+  await scenario('R01', '真实模型：手机端对话并收到回复', { needsReal: true }, async ({ check }) => {
+    const { ctx, page } = await loginAs('phone390')
+    const n = nonce()
+    await L.send(page, `请只回复下面这串字符，不要添加其他内容：pong-${n}`)
+    await L.waitText(page, `pong-${n}`, 180000)
+    const sid = await L.waitSessionId(page)
+    await sleep(3000)
+    const msgs = await L.messages(ctx, sid)
+    check('服务端历史中有模型给出的回复', msgs.some(m => m.role === 'assistant' && String(m.content).includes(`pong-${n}`)))
+    await ctx.close()
+  })
+
+  await scenario('R02', '真实模型：调用工具在临时目录写文件并核对', { needsReal: true }, async ({ check }) => {
+    const { ctx, page } = await loginAs('phone390')
+    const n = nonce()
+    const file = `${W}/real-${n}.txt`
+    await L.send(page, `请使用文件写入工具，把文本 ok-${n} 写入文件 ${file}（目录不存在就创建），完成后只回复 done。`)
+    let r = null
+    const t0 = Date.now()
+    while (Date.now() - t0 < 240000) { r = await L.readText(ctx, file); if (r.status === 200) break; await sleep(3000) }
+    check('文件由 Hermes 工具真实写入（经官方 REST 读取核对）', r && r.status === 200 && JSON.stringify(r.body).includes(`ok-${n}`), r && r.status)
+    await page.screenshot({ path: path.join(SHOTS, 'R02-real-tool.png') })
+    await ctx.close()
   })
 
   // ------------------------------------------------------------------ S13
