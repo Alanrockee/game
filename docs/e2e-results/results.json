@@ -1,0 +1,853 @@
+{
+  "kind": "真实 Hermes + 脚本化模型桩",
+  "base": "https://hermes.test:8443",
+  "at": "2026-11-18T00:31:32.912Z",
+  "results": [
+    {
+      "id": "S01",
+      "title": "手机/平板/电脑尺寸适配与长内容渲染",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "phone360 页面无横向撑破",
+          "ok": true,
+          "detail": {
+            "docScrollWidth": 360,
+            "innerWidth": 360,
+            "offenders": []
+          }
+        },
+        {
+          "name": "phone360 超长代码行在代码块内横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "phone360 宽表格局部横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "phone360 输入框在可视区域内",
+          "ok": true,
+          "detail": {
+            "top": 664,
+            "bottom": 696,
+            "h": 780
+          }
+        },
+        {
+          "name": "phone360 输入框字号 ≥16px（iOS 不会自动放大）",
+          "ok": true,
+          "detail": "16px"
+        },
+        {
+          "name": "phone390 页面无横向撑破",
+          "ok": true,
+          "detail": {
+            "docScrollWidth": 390,
+            "innerWidth": 390,
+            "offenders": []
+          }
+        },
+        {
+          "name": "phone390 超长代码行在代码块内横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "phone390 宽表格局部横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "phone390 输入框在可视区域内",
+          "ok": true,
+          "detail": {
+            "top": 728,
+            "bottom": 760,
+            "h": 844
+          }
+        },
+        {
+          "name": "phone390 输入框字号 ≥16px（iOS 不会自动放大）",
+          "ok": true,
+          "detail": "16px"
+        },
+        {
+          "name": "390 宽、模拟键盘弹出后输入框仍可见",
+          "ok": true,
+          "detail": {
+            "top": 392,
+            "bottom": 424
+          }
+        },
+        {
+          "name": "消息/代码有“复制”按钮",
+          "ok": true,
+          "detail": 2
+        },
+        {
+          "name": "向上阅读时出现“滚动到底部”按钮",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "phone430 页面无横向撑破",
+          "ok": true,
+          "detail": {
+            "docScrollWidth": 430,
+            "innerWidth": 430,
+            "offenders": []
+          }
+        },
+        {
+          "name": "phone430 超长代码行在代码块内横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "phone430 宽表格局部横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "phone430 输入框在可视区域内",
+          "ok": true,
+          "detail": {
+            "top": 816,
+            "bottom": 848,
+            "h": 932
+          }
+        },
+        {
+          "name": "phone430 输入框字号 ≥16px（iOS 不会自动放大）",
+          "ok": true,
+          "detail": "16px"
+        },
+        {
+          "name": "tablet 页面无横向撑破",
+          "ok": true,
+          "detail": {
+            "docScrollWidth": 820,
+            "innerWidth": 820,
+            "offenders": []
+          }
+        },
+        {
+          "name": "tablet 超长代码行在代码块内横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "tablet 宽表格局部横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "tablet 输入框在可视区域内",
+          "ok": true,
+          "detail": {
+            "top": 1106,
+            "bottom": 1138,
+            "h": 1180
+          }
+        },
+        {
+          "name": "desktop 页面无横向撑破",
+          "ok": true,
+          "detail": {
+            "docScrollWidth": 1280,
+            "innerWidth": 1280,
+            "offenders": []
+          }
+        },
+        {
+          "name": "desktop 超长代码行在代码块内横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "desktop 宽表格局部横向滚动（或宽屏可完整显示）",
+          "ok": true,
+          "detail": true
+        },
+        {
+          "name": "desktop 输入框在可视区域内",
+          "ok": true,
+          "detail": {
+            "top": 735,
+            "bottom": 764,
+            "h": 800
+          }
+        },
+        {
+          "name": "系统深色模式下界面为深色",
+          "ok": true,
+          "detail": "color(srgb 0.0509804 0.0625882 0.0810196)"
+        }
+      ],
+      "notes": [
+        "键盘弹出为“缩小视口”模拟，不等于真机软键盘；真机需人工确认。"
+      ],
+      "seconds": 50
+    },
+    {
+      "id": "S02",
+      "title": "中文输入法选词时 Enter 不误发送",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "组合输入中（isComposing=true）按 Enter 不发送",
+          "ok": true
+        },
+        {
+          "name": "Safari 式“结束组合后紧跟 229 Enter”不发送",
+          "ok": true
+        },
+        {
+          "name": "普通 Enter 正常发送且只发送一次",
+          "ok": true,
+          "detail": 1
+        }
+      ],
+      "notes": [],
+      "seconds": 9
+    },
+    {
+      "id": "S03",
+      "title": "真实 Agent 工具调用（临时目录写文件）",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "文件由 Hermes 工具真实写入（经官方 REST 读取核对）",
+          "ok": true,
+          "detail": {
+            "status": 200
+          }
+        },
+        {
+          "name": "该任务只到达模型一次",
+          "ok": true
+        }
+      ],
+      "notes": [],
+      "seconds": 5
+    },
+    {
+      "id": "S04",
+      "title": "两个客户端同步同一会话（电脑 A ↔ 手机 B）",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "B 的会话列表包含 A 新建的会话",
+          "ok": true,
+          "detail": "local-c6668a1ca2180d9f34ec1078aa29852724e9998721c6bcec54ff3d6ac01cb3b0"
+        },
+        {
+          "name": "B 打开后看到 A 的消息与回复",
+          "ok": true
+        },
+        {
+          "name": "A 无需刷新即看到 B 的新消息与回复",
+          "ok": true
+        },
+        {
+          "name": "上下文连续（第三轮能看到前两轮）",
+          "ok": true,
+          "detail": "本会话之前的用户消息：同步-甲-7e74c3 | 同步-乙-7e74c3"
+        },
+        {
+          "name": "甲消息只执行一次",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "name": "服务端历史无重复用户消息",
+          "ok": true,
+          "detail": [
+            "同步-甲-7e74c3",
+            "同步-乙-7e74c3",
+            "[recall]"
+          ]
+        },
+        {
+          "name": "会话属于当前 profile（default）",
+          "ok": true,
+          "detail": "default"
+        },
+        {
+          "name": "带正确版本号重命名成功",
+          "ok": true,
+          "detail": {
+            "status": 200,
+            "rev": 3,
+            "body": "{\"ok\":true,\"session_id\":\"local-c6668a1ca2180d9f34ec1078aa29852724e9998721c6bcec54ff3d6ac01cb3b0\",\"revision\":4,\"execution_generation\":3,\"operation\":\"sidebar\",\"title\":\"同步改名-7e74c3\"}"
+          }
+        },
+        {
+          "name": "同一 request_id 重试返回原回执（幂等，不再次修改）",
+          "ok": true,
+          "detail": {
+            "status": 200,
+            "body": "{\"ok\":true,\"execution_generation\":3,\"operation\":\"sidebar\",\"revision\":4,\"session_id\":\"local-c6668a1ca2180d9f34ec1078aa29852724e9998721c6bcec54ff3d6ac01cb3b0\",\"ti"
+          }
+        },
+        {
+          "name": "用过期版本号改名被拒绝（冲突提示，而不是静默覆盖）",
+          "ok": true,
+          "detail": {
+            "status": 409,
+            "body": "{\"detail\":\"revision_conflict\"}"
+          }
+        },
+        {
+          "name": "B 实时看到新标题",
+          "ok": true
+        }
+      ],
+      "notes": [],
+      "seconds": 23
+    },
+    {
+      "id": "S05",
+      "title": "接续电脑端 CLI 会话（双向）",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "CLI 新建会话并返回会话 ID",
+          "ok": true,
+          "detail": "local-abdd55481acf242731e0897d904c31b9d722c5c9a8f5e0ec261eca60ba1f56f3"
+        },
+        {
+          "name": "手机端打开后看到 CLI 会话历史",
+          "ok": true
+        },
+        {
+          "name": "手机端可以在 CLI 会话里继续提问（未被拒绝为只读）",
+          "ok": true
+        },
+        {
+          "name": "CLI --resume 后上下文里能看到手机端的消息",
+          "ok": true,
+          "detail": "本会话之前的用户消息：电脑-丙-e7c68e | 手机-丁-e7c68e\r"
+        },
+        {
+          "name": "CLI 新消息实时出现在手机端",
+          "ok": true
+        }
+      ],
+      "notes": [
+        "Hermes v0.23.2 中 CLI 与 Webapp 由同一个 Gateway 执行；网关接管之前写下的旧会话需先运行 `hermes sessions adopt`。"
+      ],
+      "seconds": 19
+    },
+    {
+      "id": "S06",
+      "title": "关闭页面后任务继续，重新打开恢复结果",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "重新打开后看到完整结果",
+          "ok": true
+        },
+        {
+          "name": "服务端历史中该轮已完成",
+          "ok": true
+        },
+        {
+          "name": "模型只被调用一次（重连没有重复执行）",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "name": "模型流没有被中途切断",
+          "ok": true
+        }
+      ],
+      "notes": [],
+      "seconds": 26
+    },
+    {
+      "id": "S06b",
+      "title": "实时连接中途断开（模拟切网），自动重连补齐输出",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "测试入口确实断开了实时连接",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "name": "同一页面在断线后自动恢复并显示最终结果",
+          "ok": true
+        },
+        {
+          "name": "只执行一次",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "name": "最终输出没有重复段落",
+          "ok": true,
+          "detail": 1
+        }
+      ],
+      "notes": [
+        "断开后 1.5 秒页面状态片段：（无连接提示）"
+      ],
+      "seconds": 15
+    },
+    {
+      "id": "S07",
+      "title": "重复点击、响应丢失与离线",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "快速连按两次 Enter 只提交一次",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "name": "测试入口在提交瞬间断开了实时连接",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "name": "回执丢失后没有被自动重复执行（模型调用 ≤ 1）",
+          "ok": true,
+          "detail": {
+            "turns": 0
+          }
+        },
+        {
+          "name": "服务端历史中该消息不重复",
+          "ok": true,
+          "detail": {
+            "rows": 0
+          }
+        },
+        {
+          "name": "离线模拟：已有实时连接被断开",
+          "ok": true,
+          "detail": 1
+        },
+        {
+          "name": "离线时状态栏不再显示“后端 就绪”",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "离线期间消息没有到达模型",
+          "ok": true
+        },
+        {
+          "name": "离线时输入内容没有丢失（仍在输入框或显示为未送达）",
+          "ok": true
+        },
+        {
+          "name": "恢复网络后自动重连（状态栏回到就绪）",
+          "ok": true,
+          "detail": "后端 就绪 | 后端 v0.23.2"
+        },
+        {
+          "name": "离线时未送达的消息恢复后不会被重复执行（≤ 1 次）",
+          "ok": true,
+          "detail": 0
+        }
+      ],
+      "notes": [
+        "回执丢失后：模型调用 0 次，服务端用户消息 0 条；页面出现了待核对/失败提示。",
+        "离线 8 秒后状态栏：；页面提示片段：offline",
+        "离线按发送后：输入框已清空；页面提示片段：离线草稿-cada36",
+        "恢复网络 25 秒后，离线时按下发送的那条消息到达模型 0 次（0 = 需用户手动重发；1 = 恢复后以同一 submission_id 送达一次）。"
+      ],
+      "seconds": 120
+    },
+    {
+      "id": "S08",
+      "title": "停止任务：取消请求真正到达后端",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "后端中止了上游模型请求（模型桩记录到流被关闭）",
+          "ok": true
+        },
+        {
+          "name": "停止后“停止”按钮消失、回到可输入状态",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "name": "被取消的任务没有在后台继续跑完",
+          "ok": true
+        },
+        {
+          "name": "取消没有触发重新执行",
+          "ok": true
+        }
+      ],
+      "notes": [],
+      "seconds": 30
+    },
+    {
+      "id": "S09",
+      "title": "工具批准：两端可见、绑定到具体命令、拒绝/批准均生效",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "电脑端也看到同一个待批准命令（卡片显示具体命令）",
+          "ok": true
+        },
+        {
+          "name": "拒绝后命令没有执行（文件仍在）",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "name": "拒绝后电脑端的批准卡片失效",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "name": "电脑端批准后命令执行（文件已删除）",
+          "ok": true,
+          "detail": 404
+        },
+        {
+          "name": "批准后手机端卡片随之消失，不能重复批准",
+          "ok": true,
+          "detail": 0
+        }
+      ],
+      "notes": [
+        "测试实例使用 approvals.mode=manual 以便确定性复现；部署时保留你现有的批准设置（默认 smart）。"
+      ],
+      "seconds": 20
+    },
+    {
+      "id": "S10",
+      "title": "文件：手机上传 → Hermes 实际读取 → 另一端下载生成结果",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "上传接口成功",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "name": "附件内容进入了模型上下文",
+          "ok": true
+        },
+        {
+          "name": "Hermes 用 read_file 工具实际读到了服务器上的附件文件",
+          "ok": true
+        },
+        {
+          "name": "电脑端（另一登录）可下载 Hermes 生成的文件",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "name": "下载为附件形式（不在页面内执行）",
+          "ok": true,
+          "detail": "attachment; filename=\"report-28e96d.md\""
+        },
+        {
+          "name": "图片上传成功",
+          "ok": true,
+          "detail": {
+            "url": "/api/chat/file-upload?profile=default",
+            "status": 200
+          }
+        }
+      ],
+      "notes": [
+        "附件保存位置（相对会话工作目录）：.hermes/attachments/web-626a330976529ca5-note-28e96d.txt",
+        "“图片…”选择器 accept=.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff（手机上会提供拍照/相册）"
+      ],
+      "seconds": 11
+    },
+    {
+      "id": "R01",
+      "title": "真实模型：手机端对话并收到回复",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "skip",
+      "checks": [],
+      "notes": [
+        "仅在接真实模型时运行"
+      ],
+      "seconds": 0
+    },
+    {
+      "id": "R02",
+      "title": "真实模型：调用工具在临时目录写文件并核对",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "skip",
+      "checks": [],
+      "notes": [
+        "仅在接真实模型时运行"
+      ],
+      "seconds": 0
+    },
+    {
+      "id": "S13",
+      "title": "PWA：manifest、可安装性、安全区",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "manifest 可解析且无错误",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "name": "Chrome 认为可安装（无 installability 错误）",
+          "ok": true,
+          "detail": []
+        },
+        {
+          "name": "manifest 不需要登录也可获取（浏览器拉取 manifest 不带 Cookie），且不含私有数据",
+          "ok": true,
+          "detail": 200
+        },
+        {
+          "name": "模拟底部手势条 34px 时，内容区留出底部安全区",
+          "ok": true,
+          "detail": "34px"
+        },
+        {
+          "name": "聚焦输入框（键盘弹出）时去掉底部安全区留白",
+          "ok": true,
+          "detail": "0px"
+        },
+        {
+          "name": "没有注册 Service Worker、没有 Cache Storage（不缓存私有数据）",
+          "ok": true,
+          "detail": {
+            "sw": 0,
+            "caches": 0
+          }
+        }
+      ],
+      "notes": [
+        "安全区为 Chromium 模拟（Emulation.setSafeAreaInsetsOverride），不等于真机；iOS/Android 主屏安装需真机确认。"
+      ],
+      "seconds": 8
+    },
+    {
+      "id": "S11",
+      "title": "登录、权限与安全",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "未登录访问首页被重定向到登录页",
+          "ok": true
+        },
+        {
+          "name": "未登录读取会话列表被拒绝",
+          "ok": true
+        },
+        {
+          "name": "未登录下载文件被拒绝",
+          "ok": true
+        },
+        {
+          "name": "未登录读取配置被拒绝",
+          "ok": true
+        },
+        {
+          "name": "未登录无法申请实时连接票据",
+          "ok": true,
+          "detail": 401
+        },
+        {
+          "name": "未登录 WebSocket 握手不成功",
+          "ok": true,
+          "detail": 403
+        },
+        {
+          "name": "错误密码被拒绝（401）",
+          "ok": true,
+          "detail": 401
+        },
+        {
+          "name": "不存在的用户与错误密码返回相同结果（不泄露用户名是否存在）",
+          "ok": true,
+          "detail": [
+            401,
+            401
+          ]
+        },
+        {
+          "name": "状态接口报告 auth_required=true",
+          "ok": true,
+          "detail": [
+            "basic"
+          ]
+        },
+        {
+          "name": "登录 Cookie 均为 __Host- 前缀 + HttpOnly + Secure + SameSite=Lax",
+          "ok": true,
+          "detail": [
+            "__Host-hermes_session_at_953b5 true/true/Lax",
+            "__Host-hermes_session_rt_953b5 true/true/Lax",
+            "__Host-hermes_session_provider true/true/Lax",
+            "__Host-hermes_webapp_signin_95 true/true/Lax"
+          ]
+        },
+        {
+          "name": "浏览器存储中没有会话 Cookie 值",
+          "ok": true
+        },
+        {
+          "name": "页面 HTML 不含服务端密钥",
+          "ok": true,
+          "detail": "3 个探针"
+        },
+        {
+          "name": "拒绝下载 Hermes 的 .env 凭证文件",
+          "ok": true,
+          "detail": 403
+        },
+        {
+          "name": "路径穿越到 .env 被拒绝",
+          "ok": true,
+          "detail": 403
+        },
+        {
+          "name": "拒绝下载正在使用的会话数据库",
+          "ok": true,
+          "detail": 409
+        },
+        {
+          "name": "通过符号链接指向 .env 被拒绝",
+          "ok": true,
+          "detail": 403
+        },
+        {
+          "name": "模型输出中的 <img onerror>/<script>/<iframe> 不执行",
+          "ok": true,
+          "detail": {}
+        },
+        {
+          "name": "javascript: 链接被清除",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "name": "上传的 HTML 只以附件（Content-Disposition: attachment）下载，不在站内渲染",
+          "ok": true,
+          "detail": {
+            "cd": "attachment; filename=\"web-fce57b23b233fb4c-evil.html\"",
+            "ct": "text/html; charset=utf-8"
+          }
+        },
+        {
+          "name": "页面带 CSP（禁止内联脚本、禁止被嵌入）",
+          "ok": true,
+          "detail": "default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval' 'sha256-DNLyvt92UPFLouRKgpya9MqQxHI26V91n5jyyY6S2bs=' 'sh"
+        },
+        {
+          "name": "前置条件：未发送草稿已保存在本机（刷新不丢）",
+          "ok": true
+        },
+        {
+          "name": "退出登录成功并回到登录页",
+          "ok": true,
+          "detail": "界面：设置 → 网关 → 退出登录"
+        },
+        {
+          "name": "退出后本机不再保留草稿、待确认提交、队列和最近会话等私密状态",
+          "ok": true,
+          "detail": {
+            "hit": [],
+            "drafts": [],
+            "session": 0
+          }
+        },
+        {
+          "name": "退出后旧 Cookie 重放被拒绝（服务端已撤销）",
+          "ok": true,
+          "detail": 401
+        },
+        {
+          "name": "退出后下载接口同样失效",
+          "ok": true,
+          "detail": 401
+        },
+        {
+          "name": "退出后，另一个标签页已打开的实时连接不能再提交任务",
+          "ok": true,
+          "detail": {
+            "tab2Status": "",
+            "turns": 0
+          }
+        }
+      ],
+      "notes": [
+        "其他 Cookie（非凭证，仅界面偏好）：sidebar_state",
+        "下载响应 X-Content-Type-Options=（未设置）；attachment 已阻止浏览器内联渲染。",
+        "退出 5 秒后另一个标签页状态栏：；URL：/login"
+      ],
+      "seconds": 33
+    },
+    {
+      "id": "S12",
+      "title": "网关进程崩溃/重启：历史保留、中断任务不被静默重跑",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "重启后历史消息与已完成结果仍在",
+          "ok": true
+        },
+        {
+          "name": "中断的任务没有在重启后被自动重新执行",
+          "ok": true,
+          "detail": 0
+        },
+        {
+          "name": "中断的任务没有被标成“完成”",
+          "ok": true
+        },
+        {
+          "name": "界面把中断的轮次标为“已暂停/已丢失”，等待用户决定（而不是自动重跑）",
+          "ok": true,
+          "detail": "1 条排队 — 已暂停"
+        }
+      ],
+      "notes": [],
+      "seconds": 67
+    },
+    {
+      "id": "S14",
+      "title": "登录尝试速率限制",
+      "kind": "真实 Hermes + 脚本化模型桩",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "连续错误登录后触发 429 限流",
+          "ok": true,
+          "detail": "401,401,401,401,401,401,401,401,401,429,429,429,429"
+        }
+      ],
+      "notes": [
+        "限流按客户端 IP、每分钟窗口计算；本场景放在最后执行，避免影响其他场景登录。"
+      ],
+      "seconds": 0
+    }
+  ]
+}

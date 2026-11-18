@@ -337,7 +337,7 @@ async function layoutMetrics(page) {
     const composerText = await L.composer(B.page).evaluate(el => el.textContent).catch(() => '')
     const pageText = await B.page.locator('body').innerText()
     check('离线时输入内容没有丢失（仍在输入框或显示为未送达）', composerText.includes(`离线草稿-${n}`) || pageText.includes(`离线草稿-${n}`))
-    note(`离线按发送后：输入框${composerText.includes(`离线草稿-${n}`) ? '保留了草稿' : '已清空'}；页面提示片段：${(pageText.match(/.{0,14}(失败|未发送|未送达|重试|离线|无法|排队|queued).{0,14}/i) || ['（无）'])[0]}`)
+    note(`离线按发送后：草稿${pageText.includes(`离线草稿-${n}`) ? '仍显示在页面（输入框，见截图 S07-offline-send）' : '不可见'}；页面提示片段：${(pageText.match(/.{0,14}(失败|未发送|未送达|重试|离线|无法|排队|queued).{0,14}/i) || ['（无）'])[0]}`)
     fs.unlinkSync(block)
     await B.ctx.setOffline(false)
     await sleep(25000)
