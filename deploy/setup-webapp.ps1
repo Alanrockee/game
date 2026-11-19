@@ -204,16 +204,34 @@ Ok "插件：$PluginDir"
 Ok "PWA 文件：$PwaDir"
 
 # ---------------------------------------------------------------- 7. Tailscale Serve
+function Set-TailnetServe([string[]]$ServeArgs) {
+  $serveOutput = & $TsExe @ServeArgs 2>&1 | ForEach-Object { $_.ToString() } | Out-String
+  if ($LASTEXITCODE -eq 0) { return $true }
+  if ($serveOutput -notmatch 'must be a Windows local admin') {
+    Warn ($serveOutput.Trim() -replace 'https://(?:login|console)\.tailscale\.com/\S+', 'https://login.tailscale.com/admin/dns')
+    return $false
+  }
+  Warn 'Tailscale 发布本地目录需要管理员权限，请在 Windows 用户账户控制弹窗中点「是」。'
+  # Start-Process 需要显式保留路径周围的引号，以支持包含空格的 Hermes 主目录。
+  $quotedArgs = ($ServeArgs | ForEach-Object { '"' + $_ + '"' }) -join ' '
+  try {
+    $serveProcess = Start-Process -FilePath $TsExe -ArgumentList $quotedArgs -Verb RunAs -WindowStyle Hidden -PassThru -Wait -ErrorAction Stop
+    if ($serveProcess.ExitCode -eq 0) { return $true }
+    Warn "管理员 Tailscale Serve 退出代码：$($serveProcess.ExitCode)"
+  } catch { Warn '未能以管理员权限运行 Tailscale Serve。' }
+  return $false
+}
+
 if ($UseTailscale) {
-  Say '配置 Tailscale Serve（只在你自己的 tailnet 内可访问，不是公网）'
-  & $TsExe serve --bg --https=443 "http://127.0.0.1:$Port" | Out-Null
-  if ($LASTEXITCODE -ne 0) { Die 'tailscale serve 失败。请右键「以管理员身份运行」 PowerShell 后重试，或检查是否已在管理后台开启 HTTPS Certificates。' }
+  Say '配置 Tailscale Serve（仅限私人 tailnet）'
+  $serveArgs = @('serve', '--bg', '--https=443')
+  if (-not (Set-TailnetServe ($serveArgs + "http://127.0.0.1:$Port"))) { Die 'tailscale serve 根路径配置失败。' }
   Ok "https://$DnsName/ → http://127.0.0.1:$Port"
-  & $TsExe serve --bg --https=443 --set-path /pwa $PwaDir *> $null
-  if ($LASTEXITCODE -eq 0) { Ok "https://$DnsName/pwa/ → $PwaDir" } else { Warn 'Tailscale 未能提供 PWA 文件目录；网页照常可用，只是添加到主屏幕后可能不是独立窗口。' }
+  if (Set-TailnetServe ($serveArgs + @('--set-path', '/pwa', $PwaDir))) { Ok "https://$DnsName/pwa/ → $PwaDir" }
+  else { Warn 'Tailscale 未能提供 PWA 文件目录，网页仍可通过根路径访问。' }
   if ($BlockTerminal) {
-    & $TsExe serve --bg --https=443 --set-path /api/host-terminal 'text:disabled' *> $null
-    if ($LASTEXITCODE -eq 0) { Ok '已在入口屏蔽主机终端' } else { Warn '未能屏蔽主机终端' }
+    if (Set-TailnetServe ($serveArgs + @('--set-path', '/api/host-terminal', 'text:disabled'))) { Ok '已在入口屏蔽主机终端' }
+    else { Warn '未能屏蔽主机终端' }
   }
 }
 
@@ -238,12 +256,22 @@ switch ($GwMode) {
 
 # ---------------------------------------------------------------- 9. 自检
 Say '自检'
-Start-Sleep -Seconds 3
-function Get-Code($u) { try { (Invoke-WebRequest -Uri $u -UseBasicParsing -MaximumRedirection 0 -TimeoutSec 15).StatusCode } catch { if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 } } }
-$c = Get-Code "$PublicUrl/api/sessions"
-if ($c -eq 401) { Ok "未登录访问会话 → 401（登录保护生效）" } else { Warn "未登录访问返回 $c（期望 401；如果网关还没重启属正常）" }
-$c = Get-Code "$PublicUrl/pwa/manifest.json"
-if ($c -eq 200) { Ok 'PWA 文件可访问' } else { Warn "PWA 文件返回 $c" }
+function Get-Code($u) {
+  try { [int](Invoke-WebRequest -Uri $u -UseBasicParsing -MaximumRedirection 0 -TimeoutSec 10 -ErrorAction Stop).StatusCode }
+  catch { if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 } }
+}
+$sessionCode = 0
+$manifestCode = 0
+# 首次访问可能需要等待网关就绪和 Tailscale 签发 HTTPS 证书。
+for ($attempt = 0; $attempt -lt 6; $attempt++) {
+  if ($sessionCode -ne 401) { $sessionCode = Get-Code "$PublicUrl/api/sessions" }
+  if ($manifestCode -ne 200) { $manifestCode = Get-Code "$PublicUrl/pwa/manifest.json" }
+  if ($sessionCode -eq 401 -and $manifestCode -eq 200) { break }
+  if ($attempt -lt 5) { Start-Sleep -Seconds 3 }
+}
+if ($sessionCode -eq 401) { Ok '未登录访问会话 → 401（登录保护生效）' } else { Warn "未登录访问返回 $sessionCode，期望 401。" }
+if ($manifestCode -eq 200) { Ok 'PWA 文件可访问 → 200' } else { Warn "PWA 文件返回 $manifestCode，期望 200。" }
+if ($sessionCode -ne 401 -or ($UseTailscale -and $manifestCode -ne 200)) { Die '自检未通过，请先检查网关与 HTTPS 路由状态。' }
 
 Write-Host ''
 Write-Host '完成！手机访问地址（手机需打开 Tailscale 并登录同一个账号）：' -ForegroundColor Green
