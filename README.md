@@ -51,7 +51,7 @@ git clone <本仓库地址> hermes-mobile && cd hermes-mobile
 bash deploy/setup-webapp.sh
 ```
 
-脚本会依次：检查版本与网关运行方式 → `hermes backup --quick` 并另存 `config.yaml`/`.env` → 让你设置登录用户名和密码（不回显，只保存 scrypt 哈希）→ 配置 `webapp.*` → 界面切换简体中文 → 安装插件与 PWA 文件 → 配置 Tailscale Serve → 构建 Webapp → 重启网关 → 自检。可重复执行。
+脚本会依次：检查版本与网关运行方式 → `hermes backup --quick`（官方状态快照，存于 `~/.hermes/state-snapshots/`）并另存 `config.yaml`/`.env` → 让你设置登录用户名和密码（不回显，只保存 scrypt 哈希）→ 配置 `webapp.*` → 界面切换简体中文 → 安装插件与 PWA 文件 → 配置 Tailscale Serve → 构建 Webapp → 重启网关 → 自检。可重复执行。
 
 常用选项：
 

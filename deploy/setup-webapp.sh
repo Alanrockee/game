@@ -91,8 +91,10 @@ cp -p "$HERMES_HOME/config.yaml" "$BK/config.yaml" 2>/dev/null || true
 cp -p "$HERMES_HOME/.env" "$BK/.env" 2>/dev/null || true
 echo "$BK" > "$HERMES_HOME/backups/mobile-webapp-latest"
 ok "config.yaml / .env 副本：$BK"
-if "$HERMES_BIN" backup --quick -o "$BK/hermes-quick-backup.zip" >/dev/null 2>&1; then ok "官方快照：$BK/hermes-quick-backup.zip"
-else warn "hermes backup --quick 未成功（不影响继续，上面的文件副本仍可用于回退）"; fi
+# 官方 --quick 写入 ~/.hermes/state-snapshots/（忽略 -o，不生成 ZIP），以输出确认是否成功
+SNAP="$("$HERMES_BIN" backup --quick 2>&1 | sed -n 's/^State snapshot created: *//p' | head -1)"
+if [ -n "$SNAP" ]; then ok "官方状态快照：$SNAP（恢复：/snapshot restore $SNAP）"
+else warn "hermes backup --quick 未确认生成快照（不影响继续，上面的文件副本仍可用于回退）"; fi
 
 # ---------------------------------------------------------------- 3. 访问地址
 if [ "$USE_TAILSCALE" = 1 ]; then
@@ -223,7 +225,12 @@ ok "PWA 文件：$HERMES_HOME/mobile-pwa/"
 # ---------------------------------------------------------------- 7. Tailscale Serve
 if [ "$USE_TAILSCALE" = 1 ]; then
   say "配置 Tailscale Serve（仅 tailnet 内可访问，不是 Funnel 公网）"
-  "$TS_BIN" serve --bg --https=443 "http://127.0.0.1:$PORT" >/dev/null && ok "https://$DNS_NAME/ → http://127.0.0.1:$PORT"
+  if ! TS_OUT="$("$TS_BIN" serve --bg --https=443 "http://127.0.0.1:$PORT" 2>&1)"; then
+    printf '%s\n' "$TS_OUT" | sed 's/^/    /' >&2
+    case "$TS_OUT" in *"ccess denied"*|*operator*|*permission*) die "Linux 上 tailscale serve 需要权限：执行一次 sudo tailscale set --operator=\$USER 后重新运行本脚本" ;; esac
+    die "tailscale serve 配置失败（见上方输出；常见原因是管理后台尚未开启 HTTPS Certificates）"
+  fi
+  ok "https://$DNS_NAME/ → http://127.0.0.1:$PORT"
   if "$TS_BIN" serve --bg --https=443 --set-path /pwa "$HERMES_HOME/mobile-pwa" >/dev/null 2>&1; then ok "https://$DNS_NAME/pwa/ → $HERMES_HOME/mobile-pwa"
   else warn "Tailscale 无法直接提供本地目录（macOS 的 App Store 版/系统扩展版有此限制）。网页照常可用，插件会自动跳过 manifest；iPhone 仍可从主屏幕独立打开，Android 只能创建快捷方式。见 README 的 macOS 提示。"; fi
   if [ "$BLOCK_TERMINAL" = 1 ]; then
