@@ -59,7 +59,17 @@ tailscale serve --bg --https=443 --set-path /pwa ~/.hermes/mobile-pwa
 - 支持 WebSocket，不缓冲流式输出；长任务不依赖浏览器连接存活（断开只是 detach）。
 - `webapp.public_url` 设为该 HTTPS 地址后：Gateway 强制登录、只接受该主机名、登录回调基于它构建。
 
-### 3.4 公网暴露
+### 3.4 可选：Google 账号登录插件（`deploy/hermes-plugin/dashboard-auth-google/`）
+
+官方扩展点 `DashboardAuthProvider` 的一个用户插件，继承官方 `self_hosted`（通用 OIDC）实现，只补三点：
+
+1. **白名单**：官方 OIDC 只校验“是有效的 Google 账号”，而登录者等同主机用户，所以插件只放行 `HERMES_DASHBOARD_GOOGLE_ALLOWED_EMAILS` 中、且 `email_verified` 的邮箱；名单为空时拒绝启用。
+2. **长期会话**：授权请求附加 `access_type=offline&prompt=consent`，让 Google 发 refresh token。否则 ID Token 1 小时过期后，打开着的页面会被踢回登录页（已用模拟提供方复现）。Google 的 refresh token 不轮换，按官方文档设置 `refresh_reuse_detection = False`。
+3. 登录按钮显示 “Google”。只启用这一种登录方式时，官方 auto-SSO 会让打开网页直接跳转 Google。
+
+需要 `hermes plugins enable dashboard-auth-google`（用户插件默认不加载）。客户端 ID/密钥/白名单写在主机 `.env`。
+
+### 3.5 公网暴露
 
 用户名/密码提供方官方定位为“可信网络或 VPN”。若必须走公网域名：在同机运行 HTTPS 反代/隧道，`webapp.public_url` 指向公网地址，并改用官方 **Nous 账号登录**（`hermes dashboard register` 或 Desktop 的 Settings → Web Access）或 **自建 OIDC**（`dashboard.oauth.provider: self-hosted`）。不要直接在路由器上转发 9120 端口，也不要用 Tailscale Funnel 配合用户名/密码登录。
 

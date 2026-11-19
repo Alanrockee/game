@@ -63,6 +63,7 @@ bash deploy/setup-webapp.sh
 | `--install-service` | 网关目前是手动/Desktop 启动时，改为系统服务（开机/登录自启） |
 | `--no-zh` | 不修改界面语言 |
 | `--block-terminal` | 在 Tailscale 入口屏蔽 Webapp 的“主机终端”（见安全说明） |
+| `--google-client-json` + `--google-email` | 改用 Google 账号登录（见 [docs/GOOGLE_LOGIN.md](docs/GOOGLE_LOGIN.md)）；`--keep-password` 同时保留用户名密码 |
 
 **网关正在跑任务时**，官方会拒绝重启，脚本会提示你稍后执行 `hermes gateway restart`，不会打断任务。
 
@@ -71,6 +72,8 @@ bash deploy/setup-webapp.sh
 访问地址：**`https://<电脑名>.<tailnet名>.ts.net`**（脚本结束时会打印；也可在 Tailscale App 的设备列表里看到）。手机需打开 Tailscale 并保持连接；用 Wi-Fi 或蜂窝流量都可以。
 
 首次打开会进入登录页，输入用户名和密码即可。登录有效期 12 小时，期间自动续期，最长 30 天。
+
+**想用 Google 账号登录、不记密码？** 按 [docs/GOOGLE_LOGIN.md](docs/GOOGLE_LOGIN.md) 在 Google Cloud 点几步，再运行一次部署脚本（`-GoogleEmail 你的Gmail`）。之后打开网页会自动跳到 Google，并自动续期；只有你指定的 Gmail 能登录。
 
 **添加到主屏幕**
 - **iPhone / iPad（Safari）**：打开地址并登录 → 分享按钮 → “添加到主屏幕” → 确认名称“Hermes”。之后从主屏幕图标打开是独立窗口。主屏幕 App 与 Safari 不共享登录，第一次从图标打开需要再登录一次。

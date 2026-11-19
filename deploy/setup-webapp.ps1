@@ -10,6 +10,8 @@ Hermes 移动端 Webapp 一键配置 —— Windows 原生版（Windows PowerShe
 全自动（供 AI 助手无人值守执行）：-Yes -GeneratePassword
   -Yes              不再提问：沿用已有登录账号；版本过低时直接停止
   -GeneratePassword 生成随机强密码，只写入桌面的「Hermes手机登录信息.txt」，不在屏幕上显示
+Google 账号登录（见 docs/GOOGLE_LOGIN.md）：-GoogleEmail 你的Gmail  [-GoogleClientJson 路径]  [-KeepPassword]
+  不给 -GoogleClientJson 时，自动使用「下载」文件夹里最新的 client_secret_*.json
 （-ExecutionPolicy Bypass 只对这一次运行生效，不修改系统设置）
 #>
 param(
@@ -20,7 +22,10 @@ param(
   [switch]$InstallService,
   [switch]$BlockTerminal,
   [switch]$Yes,
-  [switch]$GeneratePassword
+  [switch]$GeneratePassword,
+  [string]$GoogleEmail = '',
+  [string]$GoogleClientJson = '',
+  [switch]$KeepPassword
 )
 # 注意：Windows PowerShell 5.1 在 'Stop' 模式下会把外部程序写到 stderr 的普通警告当成致命错误，
 # 所以全局保持 Continue，外部命令用 $LASTEXITCODE 判断，关键文件操作单独加 -ErrorAction Stop。
@@ -87,8 +92,11 @@ $utf8 = New-Object System.Text.UTF8Encoding $false
 $lines = New-Object System.Collections.Generic.List[string]
 if (Test-Path $EnvFile) { foreach ($l in [IO.File]::ReadAllLines($EnvFile)) { $lines.Add($l) } }
 function Env-Get($k) { $hit = $lines | Where-Object { $_ -like "$k=*" } | Select-Object -Last 1; if ($hit) { return $hit.Substring($k.Length + 1) } else { return '' } }
+function Env-Unset($k) { for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i] -like "$k=*") { $lines.RemoveAt($i) } } }
 function Env-Set($k, $v) { for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i] -like "$k=*") { $lines.RemoveAt($i) } }; $lines.Add("$k=$v") }
 
+$GoogleMode = [bool]$GoogleEmail
+if (-not $GoogleMode -or $KeepPassword) {
 if (Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD') { Warn '.env 里有明文 HERMES_DASHBOARD_BASIC_AUTH_PASSWORD，它会覆盖哈希；建议删除该行。' }
 $reuse = $false
 $existing = Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_USERNAME'
@@ -143,8 +151,43 @@ if (-not (Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_SECRET')) {
   Env-Set 'HERMES_DASHBOARD_BASIC_AUTH_SECRET' ([Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_'))
   Ok '已生成会话签名密钥（网关重启后不必重新登录）'
 }
+}
+
+if ($GoogleMode) {
+  Say "配置 Google 账号登录（只允许 $GoogleEmail）"
+  if ($GoogleEmail -notmatch '@') { Die '请用 -GoogleEmail 指定允许登录的 Google 邮箱' }
+  if (-not $GoogleClientJson) {
+    $dl = Join-Path $env:USERPROFILE 'Downloads'
+    $GoogleClientJson = Get-ChildItem -Path $dl -Filter 'client_secret_*.json' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
+    if (-not $GoogleClientJson) { Die "在「下载」文件夹（$dl）里没找到 client_secret_*.json。请先在 Google Cloud 下载 OAuth 客户端 JSON，或用 -GoogleClientJson 指定路径。" }
+    Ok "使用 Google 客户端文件：$GoogleClientJson"
+  }
+  if (-not (Test-Path $GoogleClientJson)) { Die "找不到 Google 客户端 JSON 文件：$GoogleClientJson" }
+  try { $gj = [IO.File]::ReadAllText($GoogleClientJson) | ConvertFrom-Json } catch { Die "无法读取 JSON：$($_.Exception.Message)" }
+  if (-not $gj.web) { Die '这不是「Web 应用」类型的 OAuth 客户端（例如选成了「桌面应用」）。请在 Google Cloud 里新建一个「Web 应用」类型的客户端。' }
+  $callback = "$PublicUrl/auth/callback"
+  if (@($gj.web.redirect_uris) -notcontains $callback) { Die "客户端缺少回调地址。请在 Google Cloud 该客户端的「已获授权的重定向 URI」里添加：$callback ，保存后重新下载 JSON。" }
+  if (-not $gj.web.client_id -or -not $gj.web.client_secret) { Die 'JSON 中缺少 client_id 或 client_secret' }
+  Env-Set 'HERMES_DASHBOARD_GOOGLE_CLIENT_ID' $gj.web.client_id
+  Env-Set 'HERMES_DASHBOARD_GOOGLE_CLIENT_SECRET' $gj.web.client_secret
+  Env-Set 'HERMES_DASHBOARD_GOOGLE_ALLOWED_EMAILS' $GoogleEmail.ToLower()
+  $gj = $null
+  Ok '已读取 Google 客户端 ID 与密钥（密钥只写入本机 .env）'
+  if (-not $KeepPassword) {
+    foreach ($k in 'HERMES_DASHBOARD_BASIC_AUTH_USERNAME', 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH', 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD') { Env-Unset $k }
+    Ok "已关闭用户名密码登录（备份在 $Bk\.env），打开网页会直接跳转 Google"
+  }
+}
 try { [IO.File]::WriteAllLines($EnvFile, $lines, $utf8) } catch { Die "写入 $EnvFile 失败：$($_.Exception.Message)" }
 Ok "凭证只写入 $EnvFile"
+if ($GoogleMode) {
+  $gp = Join-Path $HermesHome 'plugins\dashboard-auth-google'
+  New-Item -ItemType Directory -Force -Path $gp -ErrorAction Stop | Out-Null
+  Copy-Item (Join-Path $Here 'hermes-plugin\dashboard-auth-google\*') $gp -Force -ErrorAction Stop
+  & $script:HermesExe plugins enable dashboard-auth-google | Out-Null
+  if ($LASTEXITCODE -eq 0) { Ok '已安装并启用 Google 登录插件' } else { Die '启用 Google 登录插件失败，请把上面的输出发给我。' }
+  Warn "Google 客户端 JSON 里有密钥，导入完成后可以删除：$GoogleClientJson"
+}
 
 # ---------------------------------------------------------------- 5. Webapp 配置
 Say '配置官方 Webapp'
@@ -213,6 +256,6 @@ Write-Host '完成！手机访问地址（手机需打开 Tailscale 并登录同
 Write-Host ''
 Write-Host "    $PublicUrl" -ForegroundColor Green
 Write-Host ''
-Write-Host "登录用户名：$User"
+if ($GoogleMode) { Write-Host "登录方式：Google 账号（只允许 $GoogleEmail）" } else { Write-Host "登录用户名：$User" }
 if ($InfoFile) { Write-Host "登录密码在桌面文件：$InfoFile" -ForegroundColor Green }
 Write-Host "回退：把 $Bk 里的 config.yaml 和 .env 复制回 $HermesHome，然后 hermes gateway restart"

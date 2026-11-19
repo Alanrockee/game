@@ -15,6 +15,7 @@
 #   bash deploy/setup-webapp.sh                 # 交互式，推荐
 #   bash deploy/setup-webapp.sh --public-url https://myhost.example.com   # 不用 Tailscale，自备 HTTPS 入口
 #   选项：--user NAME  --port 9120  --no-zh  --no-tailscale  --install-service  --block-terminal  --yes
+#   Google 账号登录（见 docs/GOOGLE_LOGIN.md）：--google-client-json 下载的客户端JSON  --google-email 你的Gmail  [--keep-password]
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,6 +29,9 @@ SET_ZH=1
 INSTALL_SERVICE=0
 BLOCK_TERMINAL=0
 ASSUME_YES=0
+GOOGLE_JSON=""
+GOOGLE_EMAIL=""
+KEEP_PASSWORD=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -39,6 +43,9 @@ while [ $# -gt 0 ]; do
     --install-service) INSTALL_SERVICE=1; shift ;;
     --block-terminal) BLOCK_TERMINAL=1; shift ;;
     --yes|-y) ASSUME_YES=1; shift ;;
+    --google-client-json) GOOGLE_JSON="$2"; shift 2 ;;
+    --google-email) GOOGLE_EMAIL="$2"; shift 2 ;;
+    --keep-password) KEEP_PASSWORD=1; shift ;;
     -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     *) echo "未知参数：$1" >&2; exit 2 ;;
   esac
@@ -113,6 +120,13 @@ env_set() {
   printf '%s=%s\n' "$key" "$val" >> "$tmp"
   chmod 600 "$tmp"; mv "$tmp" "$ENV_FILE"
 }
+env_unset() {
+  local key="$1" tmp
+  tmp="$(mktemp "$ENV_FILE.XXXXXX")"
+  grep -v -E "^$key=" "$ENV_FILE" > "$tmp" || true
+  chmod 600 "$tmp"; mv "$tmp" "$ENV_FILE"
+}
+if [ -z "$GOOGLE_JSON" ] || [ "$KEEP_PASSWORD" = 1 ]; then
 if [ -n "$(env_get HERMES_DASHBOARD_BASIC_AUTH_PASSWORD)" ]; then
   warn ".env 里有明文 HERMES_DASHBOARD_BASIC_AUTH_PASSWORD，它会覆盖哈希；建议删除该行，只保留 PASSWORD_HASH。"
 fi
@@ -147,6 +161,44 @@ fi
 if [ -z "$(env_get HERMES_DASHBOARD_BASIC_AUTH_SECRET)" ]; then
   env_set HERMES_DASHBOARD_BASIC_AUTH_SECRET "$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
   ok "已生成会话签名密钥（重启后不必重新登录）"
+fi
+fi
+
+if [ -n "$GOOGLE_JSON" ]; then
+  say "配置 Google 账号登录（只允许 $GOOGLE_EMAIL）"
+  [ -f "$GOOGLE_JSON" ] || die "找不到 Google 客户端 JSON 文件：$GOOGLE_JSON"
+  case "$GOOGLE_EMAIL" in *@*) ;; *) die "请用 --google-email 指定允许登录的 Google 邮箱" ;; esac
+  CALLBACK="$PUBLIC_URL/auth/callback"
+  PARSED="$(python3 -I -c '
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception as e:
+    print("ERR\t无法读取 JSON：%s" % e); raise SystemExit
+if "web" not in d:
+    print("ERR\t这不是“Web 应用”类型的 OAuth 客户端（例如选成了“桌面应用”）。请在 Google Cloud 里新建一个“Web 应用”类型的客户端。"); raise SystemExit
+w = d["web"]
+if sys.argv[2] not in (w.get("redirect_uris") or []):
+    print("ERR\t客户端缺少回调地址。请在 Google Cloud 的该客户端“已获授权的重定向 URI”里添加：%s ，保存后重新下载 JSON。" % sys.argv[2]); raise SystemExit
+if not w.get("client_id") or not w.get("client_secret"):
+    print("ERR\tJSON 中缺少 client_id 或 client_secret"); raise SystemExit
+print("OK\t%s\t%s" % (w["client_id"], w["client_secret"]))
+' "$GOOGLE_JSON" "$CALLBACK")"
+  case "$PARSED" in OK*) ;; *) die "${PARSED#ERR?}" ;; esac
+  G_ID="$(printf '%s' "$PARSED" | cut -f2)"; G_SECRET="$(printf '%s' "$PARSED" | cut -f3)"; unset PARSED
+  env_set HERMES_DASHBOARD_GOOGLE_CLIENT_ID "$G_ID"
+  env_set HERMES_DASHBOARD_GOOGLE_CLIENT_SECRET "$G_SECRET"
+  env_set HERMES_DASHBOARD_GOOGLE_ALLOWED_EMAILS "$(printf '%s' "$GOOGLE_EMAIL" | tr 'A-Z' 'a-z')"
+  unset G_SECRET
+  ok "已读取客户端 ID：${G_ID%%-*}-…（密钥只写入 $ENV_FILE）"
+  if [ "$KEEP_PASSWORD" = 0 ]; then
+    for k in HERMES_DASHBOARD_BASIC_AUTH_USERNAME HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH HERMES_DASHBOARD_BASIC_AUTH_PASSWORD; do env_unset "$k"; done
+    ok "已关闭用户名密码登录（备份在 $BK/.env），打开网页会直接跳转 Google"
+  fi
+  mkdir -p "$HERMES_HOME/plugins/dashboard-auth-google"
+  cp "$HERE"/hermes-plugin/dashboard-auth-google/* "$HERMES_HOME/plugins/dashboard-auth-google/"
+  "$HERMES_BIN" plugins enable dashboard-auth-google >/dev/null && ok "已安装并启用 Google 登录插件"
+  ok "提示：Google 客户端 JSON 里有密钥，导入完成后可以删除：$GOOGLE_JSON"
 fi
 ok "凭证只写入 $ENV_FILE（权限 600），未写入本仓库或浏览器"
 
@@ -219,7 +271,7 @@ cat <<EOF
 
     $PUBLIC_URL
 
-登录用户名：$WEB_USER
+$( [ -n "$GOOGLE_JSON" ] && echo "登录方式：Google 账号（只允许 $GOOGLE_EMAIL）" || echo "登录用户名：$WEB_USER" )
 回退：bash $HERE/hermes-mobile.sh rollback
 状态：bash $HERE/hermes-mobile.sh status
 EOF

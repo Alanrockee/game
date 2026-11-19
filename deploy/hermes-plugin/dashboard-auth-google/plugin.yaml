@@ -1,0 +1,8 @@
+name: dashboard-auth-google
+version: 1.0.0
+description: "Webapp / Dashboard sign-in with Google, restricted to an allow-list of Google accounts. Builds on the bundled self-hosted OIDC provider and requests offline access so sessions refresh instead of expiring hourly."
+author: hermes-mobile (local)
+kind: backend
+requires_env:
+  - HERMES_DASHBOARD_GOOGLE_CLIENT_ID
+  - HERMES_DASHBOARD_GOOGLE_ALLOWED_EMAILS
