@@ -7,6 +7,9 @@ Hermes 移动端 Webapp 一键配置 —— Windows 原生版（Windows PowerShe
 用法（在解压/克隆后的文件夹里打开 PowerShell）：
   powershell -ExecutionPolicy Bypass -File .\deploy\setup-webapp.ps1
 可选参数：-User me  -Port 9120  -PublicUrl https://...  -NoZh  -InstallService  -BlockTerminal
+全自动（供 AI 助手无人值守执行）：-Yes -GeneratePassword
+  -Yes              不再提问：沿用已有登录账号；版本过低时直接停止
+  -GeneratePassword 生成随机强密码，只写入桌面的「Hermes手机登录信息.txt」，不在屏幕上显示
 （-ExecutionPolicy Bypass 只对这一次运行生效，不修改系统设置）
 #>
 param(
@@ -15,7 +18,9 @@ param(
   [string]$PublicUrl = '',
   [switch]$NoZh,
   [switch]$InstallService,
-  [switch]$BlockTerminal
+  [switch]$BlockTerminal,
+  [switch]$Yes,
+  [switch]$GeneratePassword
 )
 # 注意：Windows PowerShell 5.1 在 'Stop' 模式下会把外部程序写到 stderr 的普通警告当成致命错误，
 # 所以全局保持 Continue，外部命令用 $LASTEXITCODE 判断，关键文件操作单独加 -ErrorAction Stop。
@@ -26,7 +31,7 @@ function Say($m)  { Write-Host ''; Write-Host "▶ $m" -ForegroundColor Cyan }
 function Ok($m)   { Write-Host "  ✓ $m" -ForegroundColor Green }
 function Warn($m) { Write-Host "  ! $m" -ForegroundColor Yellow }
 function Die($m)  { Write-Host "  ✗ $m" -ForegroundColor Red; exit 1 }
-function Confirm-Yes($q) { $a = Read-Host "  $q [y/N]"; return ($a -match '^(y|yes)$') }
+function Confirm-Yes($q) { if ($Yes) { return $true }; $a = Read-Host "  $q [y/N]"; return ($a -match '^(y|yes)$') }
 function Run-Hermes { & $script:HermesExe @args 2>&1 | Out-String }
 
 # ---------------------------------------------------------------- 1. 检查
@@ -39,6 +44,7 @@ if ($verOut -notmatch 'Hermes Agent v(\d+)\.(\d+)\.(\d+)') { Die "无法识别 H
 $Version = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
 if ([int]$Matches[1] -eq 0 -and [int]$Matches[2] -lt 23) {
   Warn "本方案在 v0.23.2 上验证；v$Version 的 Webapp 可能缺少远程登录/会话共享能力。本脚本不会替你升级。"
+  if ($Yes) { Die '版本低于 0.23，无人值守模式下停止。请先确认是否升级 Hermes。' }
   if (-not (Confirm-Yes '仍然继续？')) { exit 1 }
 }
 Ok "Hermes v$Version（$($script:HermesExe)）"
@@ -86,11 +92,23 @@ function Env-Set($k, $v) { for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($li
 if (Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD') { Warn '.env 里有明文 HERMES_DASHBOARD_BASIC_AUTH_PASSWORD，它会覆盖哈希；建议删除该行。' }
 $reuse = $false
 $existing = Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_USERNAME'
-if ($existing -and (Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH')) {
+if ($existing -and (Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH') -and -not $GeneratePassword) {
   if (Confirm-Yes "检测到已有登录账号「$existing」，是否沿用（不修改密码）？") { $reuse = $true; $User = $existing }
 }
 if (-not $reuse) {
+  if (-not $User -and $Yes) { $User = 'me' }
   if (-not $User) { $User = Read-Host '  登录用户名（直接回车用 me）'; if (-not $User) { $User = 'me' } }
+  if ($GeneratePassword) {
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+    $rb = New-Object byte[] 20; (New-Object System.Security.Cryptography.RNGCryptoServiceProvider).GetBytes($rb)
+    $p1 = -join ($rb | ForEach-Object { $alphabet[$_ % $alphabet.Length] })
+    $InfoFile = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Hermes手机登录信息.txt'
+    $info = @('Hermes 手机网页登录信息（请妥善保管，不要发给任何人或 AI）', '', "地址：$PublicUrl", "用户名：$User", "密码：$p1", '', '手机需先打开 Tailscale 并登录同一个账号。')
+    [IO.File]::WriteAllLines($InfoFile, $info, (New-Object System.Text.UTF8Encoding $true))
+    Ok "已生成随机密码，写入桌面文件：$InfoFile（屏幕上不显示）"
+  } elseif ($Yes) {
+    Die '无人值守模式（-Yes）下需要同时加 -GeneratePassword，或先手动运行一次设置密码。'
+  } else {
   while ($true) {
     $s1 = Read-Host '  设置登录密码（至少 12 位，输入时不显示）' -AsSecureString
     $s2 = Read-Host '  再输入一次' -AsSecureString
@@ -100,6 +118,7 @@ if (-not $reuse) {
     if ($p1 -ne $p2) { Warn '两次输入不一致'; continue }
     if ($p1.Length -lt 12) { Warn '密码太短'; continue }
     break
+  }
   }
   # 找一个 Python：优先 Hermes 自带的，其次系统的 py / python（跳过应用商店占位程序）
   $py = Get-ChildItem -Path (Join-Path $HermesHome 'tools') -Filter python.exe -Recurse -Depth 3 -ErrorAction SilentlyContinue |
@@ -195,4 +214,5 @@ Write-Host ''
 Write-Host "    $PublicUrl" -ForegroundColor Green
 Write-Host ''
 Write-Host "登录用户名：$User"
+if ($InfoFile) { Write-Host "登录密码在桌面文件：$InfoFile" -ForegroundColor Green }
 Write-Host "回退：把 $Bk 里的 config.yaml 和 .env 复制回 $HermesHome，然后 hermes gateway restart"
