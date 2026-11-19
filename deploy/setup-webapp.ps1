@@ -32,7 +32,7 @@ function Ok($m)   { Write-Host "  ✓ $m" -ForegroundColor Green }
 function Warn($m) { Write-Host "  ! $m" -ForegroundColor Yellow }
 function Die($m)  { Write-Host "  ✗ $m" -ForegroundColor Red; exit 1 }
 function Confirm-Yes($q) { if ($Yes) { return $true }; $a = Read-Host "  $q [y/N]"; return ($a -match '^(y|yes)$') }
-function Run-Hermes { & $script:HermesExe @args 2>&1 | Out-String }
+function Run-Hermes { & $script:HermesExe @args 2>&1 | ForEach-Object { $_.ToString() } | Out-String }
 
 # ---------------------------------------------------------------- 1. 检查
 Say '检查 Hermes'
@@ -56,29 +56,42 @@ $gw = Run-Hermes gateway status
 if ($gw -match 'Running manually') { $GwMode = 'manual' } elseif ($gw -match 'not running') { $GwMode = 'stopped' } else { $GwMode = 'service' }
 Ok "网关运行方式：$GwMode"
 
-# ---------------------------------------------------------------- 2. 备份
-Say '备份当前配置'
-$Bk = Join-Path $HermesHome ('backups\mobile-webapp-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-New-Item -ItemType Directory -Force -Path $Bk -ErrorAction Stop | Out-Null
-foreach ($f in 'config.yaml', '.env') { $p = Join-Path $HermesHome $f; if (Test-Path $p) { Copy-Item $p (Join-Path $Bk $f) } }
-Set-Content -Path (Join-Path $HermesHome 'backups\mobile-webapp-latest') -Value $Bk -Encoding UTF8
-Ok "config.yaml / .env 副本：$Bk"
-& $script:HermesExe backup --quick -o (Join-Path $Bk 'hermes-quick-backup.zip') *> $null
-if ($LASTEXITCODE -eq 0) { Ok '官方快照 hermes-quick-backup.zip 已生成' } else { Warn 'hermes backup --quick 未成功（不影响继续，上面的文件副本可用于回退）' }
-
-# ---------------------------------------------------------------- 3. 访问地址（Tailscale）
+# ---------------------------------------------------------------- 2. 访问地址（Tailscale）
 $UseTailscale = -not $PublicUrl
 if ($UseTailscale) {
   Say '检测 Tailscale'
   $ts = Get-Command tailscale -ErrorAction SilentlyContinue
   $TsExe = if ($ts) { $ts.Source } elseif (Test-Path 'C:\Program Files\Tailscale\tailscale.exe') { 'C:\Program Files\Tailscale\tailscale.exe' } else { $null }
   if (-not $TsExe) { Die '没有找到 Tailscale。请先安装 Tailscale（tailscale.com/download）并用浏览器登录，然后重新运行本脚本。' }
-  try { $DnsName = ((& $TsExe status --json | Out-String | ConvertFrom-Json).Self.DNSName).TrimEnd('.') } catch { $DnsName = '' }
-  if (-not $DnsName) { Die 'Tailscale 还没登录，或没有开启 MagicDNS。请在 Tailscale 里登录，并在 login.tailscale.com/admin/dns 打开 MagicDNS 和 HTTPS Certificates。' }
+  try { $TsStatus = & $TsExe status --json | Out-String | ConvertFrom-Json -ErrorAction Stop }
+  catch { Die '无法读取 Tailscale 状态，请确认 Tailscale 正在运行。' }
+  $DnsName = ([string]$TsStatus.Self.DNSName).TrimEnd('.')
+  if ($TsStatus.BackendState -ne 'Running' -or -not $DnsName) { Die '请先在 Tailscale 中登录并连接。' }
+  if (-not $TsStatus.CurrentTailnet.MagicDNSEnabled -or $TsStatus.CertDomains -notcontains $DnsName) {
+    Die '请在 https://login.tailscale.com/admin/dns 开启 MagicDNS 和 HTTPS Certificates，启用后重试。'
+  }
   $PublicUrl = "https://$DnsName"
   Ok "tailnet 地址：$PublicUrl"
 }
 $PublicUrl = $PublicUrl.TrimEnd('/')
+
+# ---------------------------------------------------------------- 3. 备份
+Say '备份当前配置'
+$Bk = Join-Path $HermesHome ('backups\mobile-webapp-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+New-Item -ItemType Directory -Force -Path $Bk -ErrorAction Stop | Out-Null
+foreach ($f in 'config.yaml', '.env') {
+  $p = Join-Path $HermesHome $f
+  if (Test-Path -LiteralPath $p) {
+    Copy-Item -LiteralPath $p -Destination (Join-Path $Bk $f) -ErrorAction Stop
+  }
+}
+Set-Content -LiteralPath (Join-Path $HermesHome 'backups\mobile-webapp-latest') -Value $Bk -Encoding UTF8 -ErrorAction Stop
+Ok "config.yaml / .env 副本：$Bk"
+# 官方 --quick 写入 state-snapshots，忽略 --output，不会生成 ZIP。
+$snapshotOutput = Run-Hermes backup --quick
+if ($LASTEXITCODE -eq 0 -and $snapshotOutput -match '(?m)^State snapshot created: ([\w.-]+)') {
+  Ok "官方状态快照已生成：$($Matches[1])"
+} else { Warn 'hermes backup --quick 未确认生成状态快照（上面的文件副本可用于回退）' }
 
 # ---------------------------------------------------------------- 4. 登录账号
 Say '设置手机登录账号（Hermes 官方用户名/密码登录）'
@@ -91,6 +104,7 @@ function Env-Set($k, $v) { for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($li
 
 if (Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD') { Warn '.env 里有明文 HERMES_DASHBOARD_BASIC_AUTH_PASSWORD，它会覆盖哈希；建议删除该行。' }
 $reuse = $false
+$InfoFile = $null
 $existing = Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_USERNAME'
 if ($existing -and (Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH') -and -not $GeneratePassword) {
   if (Confirm-Yes "检测到已有登录账号「$existing」，是否沿用（不修改密码）？") { $reuse = $true; $User = $existing }
@@ -103,9 +117,6 @@ if (-not $reuse) {
     $rb = New-Object byte[] 20; (New-Object System.Security.Cryptography.RNGCryptoServiceProvider).GetBytes($rb)
     $p1 = -join ($rb | ForEach-Object { $alphabet[$_ % $alphabet.Length] })
     $InfoFile = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Hermes手机登录信息.txt'
-    $info = @('Hermes 手机网页登录信息（请妥善保管，不要发给任何人或 AI）', '', "地址：$PublicUrl", "用户名：$User", "密码：$p1", '', '手机需先打开 Tailscale 并登录同一个账号。')
-    [IO.File]::WriteAllLines($InfoFile, $info, (New-Object System.Text.UTF8Encoding $true))
-    Ok "已生成随机密码，写入桌面文件：$InfoFile（屏幕上不显示）"
   } elseif ($Yes) {
     Die '无人值守模式（-Yes）下需要同时加 -GeneratePassword，或先手动运行一次设置密码。'
   } else {
@@ -126,14 +137,32 @@ if (-not $reuse) {
   if (-not $py) { $c = Get-Command py, python -ErrorAction SilentlyContinue | Where-Object { $_.Source -notmatch 'WindowsApps' } | Select-Object -First 1; if ($c) { $py = $c.Source } }
   if (-not $py) { Die '找不到可用的 Python 来计算密码哈希（Hermes 自带的 Python 也没找到）。' }
   # 与官方 plugins.dashboard_auth.basic.hash_password 相同的格式：scrypt$n$r$p$salt_b64$dk_b64
-  # 注意：Windows PowerShell 5.1 向外部程序传参时不转义内部双引号，所以这段 Python 只用单引号（在 PS 单引号字符串里写作 ''）
-  $code = 'import sys,os,hashlib,base64; pw=base64.b64decode(sys.stdin.read().strip()); s=os.urandom(16); dk=hashlib.scrypt(pw,salt=s,n=16384,r=8,p=1,dklen=64,maxmem=0); print(''scrypt$16384$8$1$%s$%s''%(base64.b64encode(s).decode(),base64.b64encode(dk).decode()))'
-  $pwB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($p1))
-  $p1 = $null; $p2 = $null
-  $Hash = ($pwB64 | & $py -I -c $code | Out-String).Trim()
-  $pwB64 = $null
-  if ($Hash -notlike 'scrypt$*') { Die '计算密码哈希失败。' }
-  Ok '已生成密码哈希（密码本身不保存）'
+  # 直接向子进程的标准输入写 UTF-8 字节，避免 PowerShell 5.1 管道和 Python 文本解码改变字节。
+  # 密码只通过标准输入传入，不出现在进程参数、环境变量或诊断输出中。
+  $code = 'import sys,os,hashlib,base64; pw=sys.stdin.buffer.read(); s=os.urandom(16); dk=hashlib.scrypt(pw,salt=s,n=16384,r=8,p=1,dklen=64,maxmem=0); print(''scrypt$16384$8$1$%s$%s''%(base64.b64encode(s).decode(),base64.b64encode(dk).decode()))'
+  $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+  $startInfo.FileName = $py
+  $startInfo.Arguments = '-I -c "' + $code + '"'
+  $startInfo.UseShellExecute = $false
+  $startInfo.RedirectStandardInput = $true
+  $startInfo.RedirectStandardOutput = $true
+  $startInfo.CreateNoWindow = $true
+  $passwordBytes = [Text.Encoding]::UTF8.GetBytes($p1)
+  $hashProcess = $null
+  try {
+    $hashProcess = [Diagnostics.Process]::Start($startInfo)
+    $inputStream = $hashProcess.StandardInput.BaseStream
+    $inputStream.Write($passwordBytes, 0, $passwordBytes.Length)
+    $inputStream.Close()
+    $Hash = $hashProcess.StandardOutput.ReadToEnd().Trim()
+    $hashProcess.WaitForExit()
+    if ($hashProcess.ExitCode -ne 0 -or $Hash -notlike 'scrypt$*') { Die '计算密码哈希失败。' }
+  } catch { Die '无法通过 Python 计算密码哈希。' }
+  finally {
+    [Array]::Clear($passwordBytes, 0, $passwordBytes.Length)
+    if ($hashProcess) { $hashProcess.Dispose() }
+  }
+  Ok '已生成密码哈希'
   Env-Set 'HERMES_DASHBOARD_BASIC_AUTH_USERNAME' $User
   Env-Set 'HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH' $Hash
   $Hash = $null
@@ -144,7 +173,15 @@ if (-not (Env-Get 'HERMES_DASHBOARD_BASIC_AUTH_SECRET')) {
   Ok '已生成会话签名密钥（网关重启后不必重新登录）'
 }
 try { [IO.File]::WriteAllLines($EnvFile, $lines, $utf8) } catch { Die "写入 $EnvFile 失败：$($_.Exception.Message)" }
-Ok "凭证只写入 $EnvFile"
+Ok "密码哈希已写入 $EnvFile"
+if ($InfoFile) {
+  $info = @('Hermes 手机网页登录信息（请妥善保管，不要发给任何人或 AI）', '', "地址：$PublicUrl", "用户名：$User", "密码：$p1", '', '手机需先打开 Tailscale 并登录同一个账号。')
+  try { [IO.File]::WriteAllLines($InfoFile, $info, (New-Object System.Text.UTF8Encoding $true)) }
+  catch { Die "无法写入桌面登录信息：$InfoFile" }
+  finally { $info = $null }
+  Ok "已写入桌面登录信息：$InfoFile（密码不显示）"
+}
+$p1 = $null; $p2 = $null
 
 # ---------------------------------------------------------------- 5. Webapp 配置
 Say '配置官方 Webapp'
