@@ -68,9 +68,8 @@ VERSION="$(printf '%s' "$VERSION_OUT" | sed -n 's/.*Hermes Agent v\([0-9][0-9.]*
 INSTALL_DIR="$(printf '%s' "$VERSION_OUT" | sed -n 's/.*Install directory: *//p' | head -1)"
 [ -n "$VERSION" ] || die "无法识别 Hermes 版本：$VERSION_OUT"
 ok "Hermes v$VERSION（$HERMES_BIN）"
-major="${VERSION%%.*}"; rest="${VERSION#*.}"; minor="${rest%%.*}"
-if [ "$major" -eq 0 ] && [ "$minor" -lt 23 ]; then
-  warn "本方案在 v0.23.2 上验证。v$VERSION 的 Webapp 可能缺少远程登录/会话共享能力；建议先阅读官方升级说明再决定是否升级（本脚本不会替你升级）。"
+if [ "$(printf '%s\n' 0.23.2 "$VERSION" | sort -V | head -1)" != "0.23.2" ]; then
+  warn "本方案需要 v0.23.2 或更新。v$VERSION 的 Webapp 可能缺少远程登录/会话共享能力；建议先阅读官方升级说明再决定是否升级（本脚本不会替你升级）。"
   confirm "仍然继续？" || exit 1
 fi
 [ -d "$HERMES_HOME" ] || die "找不到 Hermes 主目录 $HERMES_HOME（可用 HERMES_HOME=... 指定）"

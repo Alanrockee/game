@@ -47,9 +47,9 @@ $script:HermesExe = $cmd.Source
 $verOut = Run-Hermes --version
 if ($verOut -notmatch 'Hermes Agent v(\d+)\.(\d+)\.(\d+)') { Die "无法识别 Hermes 版本：$verOut" }
 $Version = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
-if ([int]$Matches[1] -eq 0 -and [int]$Matches[2] -lt 23) {
-  Warn "本方案在 v0.23.2 上验证；v$Version 的 Webapp 可能缺少远程登录/会话共享能力。本脚本不会替你升级。"
-  if ($Yes) { Die '版本低于 0.23，无人值守模式下停止。请先确认是否升级 Hermes。' }
+if ([version]$Version -lt [version]'0.23.2') {
+  Warn "本方案需要 v0.23.2 或更新；v$Version 的 Webapp 可能缺少远程登录/会话共享能力。本脚本不会替你升级。"
+  if ($Yes) { Die '版本低于 0.23.2，无人值守模式下停止。请先确认是否升级 Hermes。' }
   if (-not (Confirm-Yes '仍然继续？')) { exit 1 }
 }
 Ok "Hermes v$Version（$($script:HermesExe)）"
@@ -285,12 +285,17 @@ if ($LASTEXITCODE -ne 0) { Die 'Webapp 构建失败，请把上面的输出发�
 Ok 'Webapp 已构建'
 
 Say '让网关读取新配置'
+$GwPending = $false
 switch ($GwMode) {
-  'service' { & $script:HermesExe gateway restart; if ($LASTEXITCODE -eq 0) { Ok '网关已重启' } else { Warn '网关暂时拒绝重启（通常是有任务正在运行）。任务结束后执行：hermes gateway restart' } }
+  'service' { & $script:HermesExe gateway restart; if ($LASTEXITCODE -eq 0) { Ok '网关已重启' } else { $GwPending = $true; Warn '网关暂时拒绝重启（通常是有任务正在运行）。任务结束后执行：hermes gateway restart' } }
   'stopped' { & $script:HermesExe gateway install --if-missing --start-now --start-on-login; if ($LASTEXITCODE -eq 0) { Ok '已安装并启动网关（登录后自动运行）' } else { Warn '网关服务安装失败，可先手动运行：hermes gateway run' } }
   'manual'  {
-    if ($InstallService) { & $script:HermesExe gateway install --start-now --start-on-login }
+    if ($InstallService) {
+      & $script:HermesExe gateway install --start-now --start-on-login
+      if ($LASTEXITCODE -eq 0) { Ok '已安装网关服务（登录后自动运行）' } else { $GwPending = $true; Warn '网关服务安装失败；可在没有任务运行时执行：hermes gateway restart' }
+    }
     else {
+      $GwPending = $true
       Warn '网关当前由 Hermes Desktop 或手动启动。请在 Desktop 里重启后端，或在没有任务运行时执行：hermes gateway restart'
       Warn '想让它开机/登录后自动运行、关掉 Desktop 也能用：重新运行本脚本并加 -InstallService'
     }
@@ -299,6 +304,9 @@ switch ($GwMode) {
 
 # ---------------------------------------------------------------- 9. 自检
 Say '自检'
+# Windows PowerShell 5.1（.NET Framework）默认可能没启用 TLS 1.2，而 Tailscale Serve 只接受 TLS 1.2+，
+# 不加这一行时 HTTPS 自检会一直得到 0。只影响本次 PowerShell 进程。
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch { }
 function Get-Code($u) {
   try { [int](Invoke-WebRequest -Uri $u -UseBasicParsing -MaximumRedirection 0 -TimeoutSec 10 -ErrorAction Stop).StatusCode }
   catch { if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 } }
@@ -314,9 +322,13 @@ for ($attempt = 0; $attempt -lt 6; $attempt++) {
 }
 if ($sessionCode -eq 401) { Ok '未登录访问会话 → 401（登录保护生效）' } else { Warn "未登录访问返回 $sessionCode，期望 401。" }
 if ($manifestCode -eq 200) { Ok 'PWA 文件可访问 → 200' } else { Warn "PWA 文件返回 $manifestCode，期望 200。" }
-if ($sessionCode -ne 401 -or ($UseTailscale -and $manifestCode -ne 200)) { Die '自检未通过，请先检查网关与 HTTPS 路由状态。' }
+if ($sessionCode -ne 401 -or ($UseTailscale -and $manifestCode -ne 200)) {
+  if ($GwPending) { Warn '网关还没重启，新配置尚未生效，所以自检暂未通过。重启网关后重新运行本脚本即可复查。' }
+  else { Die '自检未通过，请先检查网关与 HTTPS 路由状态。' }
+}
 
 Write-Host ''
+if ($GwPending) { Write-Host '配置已写入，但网关需要重启后才生效（见上方黄色提示）。' -ForegroundColor Yellow }
 Write-Host '完成！手机访问地址（手机需打开 Tailscale 并登录同一个账号）：' -ForegroundColor Green
 Write-Host ''
 Write-Host "    $PublicUrl" -ForegroundColor Green
@@ -324,3 +336,4 @@ Write-Host ''
 if ($GoogleMode) { Write-Host "登录方式：Google 账号（只允许 $GoogleEmail）" } else { Write-Host "登录用户名：$User" }
 if ($InfoFile) { Write-Host "登录密码在桌面文件：$InfoFile" -ForegroundColor Green }
 Write-Host "回退：把 $Bk 里的 config.yaml 和 .env 复制回 $HermesHome，然后 hermes gateway restart"
+if ($GwPending) { exit 2 }
